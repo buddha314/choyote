@@ -58,6 +58,7 @@
           //   var cb = $this.datacb[index];
           //   cb(msg);
           // }
+          console.log("Raw data ", msg.data);
           try {
             console.log("On message2");
             var wsCMD = JSON.parse(msg.data);
@@ -174,6 +175,7 @@
         for (index = 0; index < data.length; ++index) {
           //here you will need to get the data and plot it or draw it. Using d3js.
           //Every time that the data arrives in client, this function is called.
+          console.log("Receving from server ", data[index]);
         }
 
       });
