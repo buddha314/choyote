@@ -68,6 +68,7 @@
               var channel = $this.channels[index];
               if (wsCMD.channel == channel.channel) {
                 console.log("On message4");
+                console.log(msg);
                 var data = JSON.parse(wsCMD.data);
                 var jdata = [];
                 for (idx = 0; idx < data.length; ++idx) {

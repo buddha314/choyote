@@ -31,10 +31,10 @@ proc runWithEmissions() {
   var choyoteController = new ChoyoteController();
   srv.Routes().Get("/data", choyoteController);
 
-  
+
   // Now run the sim
   begin runSim();
-  
+
   begin srv.Listen(); //Here you run the http server in one thread
 
   ws.Listen(); //Here you run you websocket server this blocks the simulation making loop as a server
@@ -58,6 +58,7 @@ record AgentDTO {
 }
 
 proc runSim() {
+  /*
   var sim = new Simulation(name="simulating amazing", epochs=EPOCHS);
   sim.world = new World(width=WORLD_WIDTH, height=WORLD_HEIGHT);
   for i in 1..N_RABBITS {
@@ -79,6 +80,12 @@ proc runSim() {
     //Use the function chrestPubSubPublish(channel:string,obj) to send obj parameter as json to the clients.
     chrestPubSubPublish("data",ad); //Here you are sending data to the websocket channel "data" queue that will send them to the websocket clients.
 
+  } */
+
+  for i in 1..500 {
+    var p = new Position(x=25* rand(0,1), y=25 * rand(0,1));
+    var ad = new AgentDTO(p);
+    chrestPubSubPublish("data",ad); //Here you are sending data to the websocket channel "data" queue that will send them to the websocket clients.
   }
 }
 
