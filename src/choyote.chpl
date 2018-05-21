@@ -6,8 +6,12 @@ config const WORLD_WIDTH: int,
              WORLD_HEIGHT: int,
              N_ANGLES: int,
              N_DISTS: int,
-             N_STEPS: int,
-             N_EPOCHS: int,
+             STEPS: int,
+             EPOCHS: int,
+             DOG_STARTING_POSITION_X: int,
+             DOG_STARTING_POSITION_Y: int,
+             CAT_STARTING_POSITION_X: int,
+             CAT_STARTING_POSITION_Y: int,
              DOG_SPEED: real,
              CAT_SPEED: real;
 
@@ -15,9 +19,13 @@ proc buildSim() {
 
   var sim = new Environment(name="simulatin' amazing!"),
      boxWorld = new World(width=WORLD_WIDTH, height=WORLD_HEIGHT, wrap=false),
-     dog = new Agent(name="dog", position=new Position(x=25, y=25), speed=DOG_SPEED),
+     //dog = new Agent(name="dog", position=new Position(x=25, y=25), speed=DOG_SPEED),
+     dog = new Agent(name="dog"
+      , position=new Position(x=DOG_STARTING_POSITION_X, y=DOG_STARTING_POSITION_Y)
+      , speed=DOG_SPEED),
      //cat = new Agent(name="cat", position=new Position(x=150, y=130), speed=CAT_SPEED);
-     cat = new Agent(name="cat", position=new Position(x=110, y=100), speed=CAT_SPEED);
+     cat = new Agent(name="cat"
+       , position=new Position(x=CAT_STARTING_POSITION_X, y=CAT_STARTING_POSITION_Y), speed=CAT_SPEED);
 
    // Create the simulation
   sim.world = boxWorld;
@@ -52,7 +60,7 @@ proc main() {
   cli.Connect();
   sleep(1);
 
-  for a in sim.run(epochs=N_EPOCHS, steps=N_STEPS) {
+  for a in sim.run(epochs=EPOCHS, steps=STEPS) {
     cli.PublishObj("/data/agent", a.writeRecord());
     writeln(a.writeRecord());
   }
