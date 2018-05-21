@@ -1,4 +1,6 @@
-use Relch;
+use Relch,
+    moschitto,
+    Time;
 
 config const WORLD_WIDTH: int,
              WORLD_HEIGHT: int,
@@ -44,8 +46,14 @@ proc main() {
     They make me sick they are so stupid. I'm ashamed I invented them...
     """);
   var sim = buildSim();
-  
+
+  var cli  = new MoschittoPublisher();
+
+  cli.Connect();
+  sleep(1);
+
   for a in sim.run(epochs=N_EPOCHS, steps=N_STEPS) {
-    writeln(a);
+    cli.PublishObj("/data/agent", a.writeRecord());
+    writeln(a.writeRecord());
   }
 }
