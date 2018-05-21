@@ -6,183 +6,53 @@
   <title>Choyote</title>
 
   <!--<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.3/socket.io.js"></script> -->
-  <script src="https://d3js.org/d3.v5.min.js"></script>
-  <script>
-    //This is the library. I need to create a js lib soon.
-    //To use chrest pubsub websocket you will need to have use this library. Soon I add it in a separated js.
+  <!--script src="https://d3js.org/d3.v5.min.js"></script-->
+  <script src="js/d3.v5.min.js"></script>
+  <script src="js/mqtt.js"></script>
 
-    //Class that deals with websocket
-    function ChrestWs(addr) {
-      this.addr = addr;
-      this.protocol = "chrest-pubsub";
-      this.channels = [];
-      this.connected = false;
-      this.socket = null;
-      console.log("socket", this.socket);
-      var $this = this;
-      this.connectedcb = [];
-      this.disconnectedcb = [];
-      this.datacb = [];
-
-      this.Connect = function (concb) {
-        $this.socket = new WebSocket($this.addr, $this.protocol);
-
-
-
-        $this.socket.onopen = function () {
-          for (index = 0; index < $this.connectedcb.length; ++index) {
-            var cb = $this.connectedcb[index];
-            cb($this);
-          }
-
-          console.log("socket open%");
-          $this.connected = true;
-          //update2("open");
-          concb($this);
-        };
-
-
-
-        $this.socket.onclose = function () {
-          console.log("Close");
-          $this.connected = false;
-          for (var index = 0; index < $this.disconnectedcb.length; ++index) {
-            var cb = $this.disconnectedcb[index];
-            cb($this);
-          }
-        };
-
-        $this.socket.onmessage = function (msg) {
-          console.log("On message");
-          // for (var index = 0; index < $this.datacb.length; ++index) {
-          //   var cb = $this.datacb[index];
-          //   cb(msg);
-          // }
-          console.log("Raw data ", msg.data);
-          try {
-            console.log("On message2");
-            var wsCMD = JSON.parse(msg.data);
-            var index;
-            for (index = 0; index < $this.channels.length; ++index) {
-              console.log("On message3");
-              var channel = $this.channels[index];
-              if (wsCMD.channel == channel.channel) {
-                console.log("On message4");
-                console.log(msg);
-                var data = JSON.parse(wsCMD.data);
-                var jdata = [];
-                for (idx = 0; idx < data.length; ++idx) {
-                  jdata.push(JSON.parse(data[idx]));
-                  console.log("On message5");
-                }
-
-                channel.cb($this, jdata, wsCMD);
-              }
-            }
-
-          } catch (error) {
-            console.error(error);
-          }
-        };
-
-      }; //fim connect
-
-      this.OnConnect = function (cb) {
-        if (cb != null) {
-          $this.connectedcb.push(cb);
-        }
-      };
-      this.OnDisconnect = function (cb) {
-        if (cb != null) {
-          $this.disconnectedcb.push(cb);
-        }
-      };
-
-      this.OnData = function (cb) {
-        if (cb != null) {
-          $this.datacb.push(cb);
-        }
-      };
-
-
-
-      this.Subscribe = function (channel, cb) {
-        var i = 0;
-        if (cb != null) {
-          $this.channels.push({
-            channel: channel,
-            cb: cb
-          });
-        }
-        var cmd = JSON.stringify({
-          channel: channel,
-          cmd: 'subscribe',
-          data: ''
-        });
-        console.log("Subscribing to ", channel);
-        $this.socket.send(cmd);
-      };
-
-      this.Publish = function (channel, obj) {
-        try {
-          var data = JSON.stringify(obj);
-
-          var wsCMD = {
-            channel: channel,
-            cmd: 'publish',
-            data: data
-          };
-          var cmd = JSON.stringify(wsCMD);
-
-          if (($this.connected == true) && ($this.socket != null)) {
-            $this.socket.send(cmd);
-          } else {
-
-            throw new Error("Cannot publish to " + channel + " websocket not connected");
-          }
-
-        } catch (error) {
-          console.error(error);
-        }
-
-      };
-
-
-    } //end function
-  </script>
 </head>
 
 <body>
   <h1>WEBSOCKETS ON A PLANE!!</h1>
+  <div>don't forget to use python -m SimpleHTTPServer 8000 </div>
   <div id="stage"></div>
 
+<script>
 
+  var svg = d3.select("#stage").append("svg:svg");
+  svg.attr('width', 800).attr('height', 500);
+  var dog = svg.append("circle").attr("cx", 400).attr("cy", 250).attr("r", 25).style("fill", "purple");
+  var cat = svg.append("circle").attr("cx", 200).attr("cy", 125).attr("r", 25).style("fill", "brown");
 
-  <script>
-    var svg = d3.select("#stage").append("svg:svg");
-    svg.attr('width', 800).attr('height', 500);
-    var coyote = svg.append("circle").attr("cx", 400).attr("cy", 250).attr("r", 25).style("fill", "purple");
-    var road_runner = svg.append("circle").attr("cx", 200).attr("cy", 125).attr("r", 25).style("fill", "brown");
+var client = mqtt.connect("ws://localhost:8081"); // you add a ws:// url here
+var goodByeClient = mqtt.connect("ws://localhost:8081"); // you add a ws:// url here
+client.subscribe("/data/agent")
+goodByeClient.subscribe("/data/goodbye")
 
-    var conn = new ChrestWs("ws://" + document.domain + ':' + 8000);
-    //This function will call the callback when it connects and pass the connects as parameter
-    conn.Connect(function (ws) {
-      //WS is the connection parameter that can be used to subscribe or publish data.
+client.on("message", function (topic, payload) {
+  //alert([topic, payload].join(": "))
+  console.log("Topic: ",topic);
+  var str = new TextDecoder("utf-8").decode(payload);
+  var j = JSON.parse(str);
+  if (j.name == "dog") {
+    console.log("hi dog");
+    dog.attr('cx', j.x);
+    dog.attr('cy', j.y);
+  }
+  if (j.name == "cat") {
+    cat.attr('cx', j.x);
+    cat.attr('cy', j.y);
+  }
+  console.log("Payload: ",j);
+  //client.end()
+})
 
-      ws.Subscribe("data", function ($this, data, cmd) {
+goodByeClient.on("message", function(topic, payload) {
+  var j = JSON.parse(new TextDecoder("utf-8").decode(payload));
+  console.log("goodbye Client" + j);
+})
+</script>
 
-        // Data is an array containing json objects sent by the server.
-        var index;
-        for (index = 0; index < data.length; ++index) {
-          //here you will need to get the data and plot it or draw it. Using d3js.
-          //Every time that the data arrives in client, this function is called.
-          console.log("Receving from server ", data[index]);
-        }
-
-      });
-
-    });
-  </script>
 
 
 

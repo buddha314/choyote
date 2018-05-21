@@ -1,134 +1,67 @@
-use Chrest,
-    ChrestWebsockets,
-    ChrestUtils,
-    Random,
-    NumSuch,
-    Relch;
+use Relch,
+    moschitto,
+    Time;
 
-config const EMIT: bool,              // Push data to the socket?
-             REPORT_INTERVAL: int,    // How often to push data?
-             API_HOST: string,
-             API_PORT: int,
-             WS_PORT: int,
-             EPOCHS: int,
-             WORLD_WIDTH: int,
+config const WORLD_WIDTH: int,
              WORLD_HEIGHT: int,
-             N_RABBITS: int,
-             N_COYOTES: int;
+             N_ANGLES: int,
+             N_DISTS: int,
+             STEPS: int,
+             EPOCHS: int,
+             DOG_STARTING_POSITION_X: int,
+             DOG_STARTING_POSITION_Y: int,
+             CAT_STARTING_POSITION_X: int,
+             CAT_STARTING_POSITION_Y: int,
+             DOG_SPEED: real,
+             CAT_SPEED: real;
 
-class ChoyoteController: ChrestController {
-  proc Get(ref req:Request,ref res:Response) {
-    //runSim();
-  }
+proc buildSim() {
 
-}
+  var sim = new Environment(name="simulatin' amazing!"),
+     boxWorld = new World(width=WORLD_WIDTH, height=WORLD_HEIGHT, wrap=false),
+     //dog = new Agent(name="dog", position=new Position(x=25, y=25), speed=DOG_SPEED),
+     dog = new Agent(name="dog"
+      , position=new Position(x=DOG_STARTING_POSITION_X, y=DOG_STARTING_POSITION_Y)
+      , speed=DOG_SPEED),
+     //cat = new Agent(name="cat", position=new Position(x=150, y=130), speed=CAT_SPEED);
+     cat = new Agent(name="cat"
+       , position=new Position(x=CAT_STARTING_POSITION_X, y=CAT_STARTING_POSITION_Y), speed=CAT_SPEED);
 
-proc runWithEmissions() {
-  var srv = new Chrest(API_HOST,API_PORT);
-  var ws = new ChrestWebsocketServer(WS_PORT);
-  srv.Routes().setServeFiles(true);
-  srv.Routes().setFilePath("www");
-  var choyoteController = new ChoyoteController();
-  srv.Routes().Get("/data", choyoteController);
+   // Create the simulation
+  sim.world = boxWorld;
+  dog = sim.add(dog);
+  cat = sim.add(cat);
+  dog = sim.setAgentTarget(agent=dog, target=cat, sensor=boxWorld.getDefaultAngleSensor());
+  cat = sim.setAgentTarget(agent=cat, target=dog, sensor=boxWorld.getDefaultAngleSensor(), avoid=true);
+  dog = sim.addAgentServo(dog, boxWorld.getDefaultMotionServo());
+  cat = sim.addAgentServo(cat, boxWorld.getDefaultMotionServo());
+  dog = sim.addAgentSensor(agent=dog, target=cat,
+    sensor=boxWorld.getDefaultDistanceSensor(), reward=boxWorld.getDefaultProximityReward());
 
-
-  // Now run the sim
-  begin runSim();
-
-  begin srv.Listen(); //Here you run the http server in one thread
-
-  ws.Listen(); //Here you run you websocket server this blocks the simulation making loop as a server
-  ws.Close();
-  srv.Close();
+  return sim;
 }
 
 
 proc main() {
-  // Decide if we are pushing to the client
-  if EMIT {
-    runWithEmissions();
-  } else {
-    runSim();
-  }
-}
+  writeln("""
+    Dog starts at (25, 25). The cat is now an agent and is
+    positioned at (110,100).  The dog is using a FollowTargetPolicy and
+    basically bum rushes the cat, overshoots, and comes back and forth.  The cat
+    runs from the dog but is out-paced (speed 1 vs 3)
 
-record AgentDTO {
-  var x: real,
-      y: real;
-}
+    Neither agent yet has a learning algorithm in place.  They are both too stupid for words.
 
-proc runSim() {
-  /*
-  var sim = new Simulation(name="simulating amazing", epochs=EPOCHS);
-  sim.world = new World(width=WORLD_WIDTH, height=WORLD_HEIGHT);
-  for i in 1..N_RABBITS {
-    const randx = rand(a=0, b=WORLD_WIDTH),
-          randy = rand(a=0, b=WORLD_HEIGHT);
-    var ifs:[1..0] Sensor,
-        wfs:[1..0] Sensor;
-    ifs.push_back(new RabbitHerdCentroid(size=7));
-    wfs.push_back(new CurrentWeather(size=5));
-    var a = new Agent(name="rabbit_" + i:string
-      , internalSensors= ifs
-      , worldSensors = wfs
-      , position=new Position(randx, randy));
-    sim.add(a);
-  }
-  for x in sim.run() {
-    writeln(x);
-    var ad = new AgentDTO(x=x.position.x, y= x.position.y);
-    //Use the function chrestPubSubPublish(channel:string,obj) to send obj parameter as json to the clients.
-    chrestPubSubPublish("data",ad); //Here you are sending data to the websocket channel "data" queue that will send them to the websocket clients.
+    They make me sick they are so stupid. I'm ashamed I invented them...
+    """);
+  var sim = buildSim();
 
-  } */
+  var cli  = new MoschittoPublisher();
 
-  for i in 1..500 {
-    var p = new Position(x=25* rand(0,1), y=25 * rand(0,1));
-    var ad = new AgentDTO(p);
-    chrestPubSubPublish("data",ad); //Here you are sending data to the websocket channel "data" queue that will send them to the websocket clients.
-  }
-}
+  cli.Connect();
+  sleep(1);
 
-class NearestRabbit : Sensor {
-  proc init(size:int) {
-    super.init(size=size);
-    this.complete();
-  }
-
-  // Computationally inefficient, we'll get there
-  proc v(me: Agent, them:[] Agent) {
-    var ds: [them.domain] real;
-    forall t in them.domain {
-      ref you = them[t];
-      ds[t] = sqrt((me.position.x - t.position.x)**2 + (me.position.y - t.position.y)**2);
-    }
-    var mn = min reduce ds;
-    var v: [1..this.size] int;
-    v[3] = 1;
-    return v;
-  }
-}
-
-class CurrentWeather: Sensor {
-  proc init(size:int) {
-    super.init(size=size);
-    this.complete();
-  }
-  proc v(me:Agent, them:[] Agent) {
-    var v: [1..this.size] int = [1];
-    return v;
-  }
-}
-
-class RabbitHerdCentroid: Sensor {
-  proc init(size:int) {
-    super.init(size=size);
-    this.complete();
-  }
-
-  proc v(me:Agent, them:[] Agent) {
-    var v:[1..this.size] int;
-    v[2] = 1;
-    return v;
+  for a in sim.run(epochs=EPOCHS, steps=STEPS) {
+    cli.PublishObj("/data/agent", a.writeRecord());
+    writeln(a.writeRecord());
   }
 }
