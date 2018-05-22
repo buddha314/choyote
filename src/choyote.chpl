@@ -8,6 +8,8 @@ config const WORLD_WIDTH: int,
              N_DISTS: int,
              STEPS: int,
              EPOCHS: int,
+             EPOCH_EMIT_INTERVAL: int,
+             EPOCH_SLEEP_INTERVAL: real,
              DOG_STARTING_POSITION_X: int,
              DOG_STARTING_POSITION_Y: int,
              CAT_STARTING_POSITION_X: int,
@@ -60,8 +62,24 @@ proc main() {
   cli.Connect();
   sleep(1);
 
+  const
+        WINDOW_START_MOD = 0,
+        WINDOW_STOP_MOD  = 100;
+  var emit: bool = false;
   for a in sim.run(epochs=EPOCHS, steps=STEPS) {
-    cli.PublishObj("/data/agent", a.writeRecord());
-    writeln(a.writeRecord());
+    if a: EpochDTO != nil {
+        if a.id % EPOCH_EMIT_INTERVAL == 0 {
+          cli.PublishObj("/data/epoch", a);
+          emit = true;
+        } else {
+          emit = false;
+        }
+        writeln(a);
+    }
+    if emit && a: AgentDTO != nil {
+      cli.PublishObj("/data/agent", a);
+      sleep(EPOCH_SLEEP_INTERVAL);
+      writeln(a);
+    }
   }
 }
