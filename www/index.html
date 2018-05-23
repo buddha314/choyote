@@ -18,47 +18,69 @@
   <div id="stage"></div>
   <div id="epoch-report"></div>
 
-<script>
-  var svg = d3.select("#stage").append("svg:svg");
-  svg.attr('width', 800).attr('height', 500);
-  var dog = svg.append("circle").attr("cx", 400).attr("cy", 250).attr("r", 25).style("fill", "purple");
-  var cat = svg.append("circle").attr("cx", 200).attr("cy", 125).attr("r", 25).style("fill", "brown");
+  <script>
+    var svg = d3.select("#stage").append("svg:svg");
+    svg.attr('width', 800).attr('height', 500);
+    var dog = svg.append("circle").attr("cx", 400).attr("cy", 250).attr("r", 25).style("fill", "purple");
+    var cat = svg.append("circle").attr("cx", 200).attr("cy", 125).attr("r", 25).style("fill", "brown");
 
-  var client = mqtt.connect("ws://localhost:8081"); // you add a ws:// url here
-  var epochClient = mqtt.connect("ws://localhost:8081"); // you add a ws:// url here
-  var goodByeClient = mqtt.connect("ws://localhost:8081"); // you add a ws:// url here
-  client.subscribe("/data/agent")
-  epochClient.subscribe("/data/epoch")
-  goodByeClient.subscribe("/data/goodbye")
+    var client = mqtt.connect("ws://localhost:8081"); // you add a ws:// url here
 
-  client.on("message", function (topic, payload) {
-    //alert([topic, payload].join(": "))
-    //console.log("Topic: ",topic);
-    var str = new TextDecoder("utf-8").decode(payload);
-    var j = JSON.parse(str);
-    if (j.name == "dog") {
-      //console.log("hi dog");
-      dog.attr('cx', j.x);
-      dog.attr('cy', j.y);
-    }
-    if (j.name == "cat") {
-      cat.attr('cx', j.x);
-      cat.attr('cy', j.y);
-    }
-    //console.log("Payload: ",j);
-    //client.end()
-  })
+    //You do not need open three connections
 
-  epochClient.on("message", function(topic, payload) {
-      var j = JSON.parse(new TextDecoder("utf-8").decode(payload));
-      var msg = "<br> Epoch: " + j.id + " steps: " + j.steps + " winner: " + j.winner;
-      document.getElementById('epoch-report').innerHTML += msg;
-  })
+    //var epochClient = mqtt.connect("ws://localhost:8081"); // you add a ws:// url here
+    //var goodByeClient = mqtt.connect("ws://localhost:8081"); // you add a ws:// url here
+    client.subscribe("/data/agent");
+    client.subscribe("/data/epoch");
+    client.subscribe("/data/goodbye");
 
-  goodByeClient.on("message", function(topic, payload) {
-    var j = JSON.parse(new TextDecoder("utf-8").decode(payload));
-    //console.log("goodbye Client" + j);
-  })
-</script>
+    client.on("message", function (topic, payload) {
+      //alert([topic, payload].join(": "))
+      //console.log("Topic: ",topic);
+      if (topic == "/data/agent") {
+
+        var str = new TextDecoder("utf-8").decode(payload);
+        var j = JSON.parse(str);
+        if (j.name == "dog") {
+          //console.log("hi dog");
+          dog.attr('cx', j.x);
+          dog.attr('cy', j.y);
+        }
+        if (j.name == "cat") {
+          cat.attr('cx', j.x);
+          cat.attr('cy', j.y);
+        }
+        //console.log("Payload: ",j);
+        //client.end()
+
+      } else if (topic == "/data/epoch") {
+        var j = JSON.parse(new TextDecoder("utf-8").decode(payload));
+        var msg = "<br> Epoch: " + j.id + " steps: " + j.steps + " winner: " + j.winner;
+        document.getElementById('epoch-report').innerHTML += msg;
+
+      } else if (topic == "/data/goodbye") {
+        var j = JSON.parse(new TextDecoder("utf-8").decode(payload));
+        console.log("goodbye Client " + j);
+
+      } else {
+        console.log("Else topic");
+      }
+
+
+    });
+    /*
+        epochClient.on("message", function (topic, payload) {
+          var j = JSON.parse(new TextDecoder("utf-8").decode(payload));
+          var msg = "<br> Epoch: " + j.id + " steps: " + j.steps + " winner: " + j.winner;
+          document.getElementById('epoch-report').innerHTML += msg;
+        })
+
+        goodByeClient.on("message", function (topic, payload) {
+          var j = JSON.parse(new TextDecoder("utf-8").decode(payload));
+          //console.log("goodbye Client" + j);
+        })
+    */
+  </script>
 </body>
+
 </html>
